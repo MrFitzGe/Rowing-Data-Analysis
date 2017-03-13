@@ -1,6 +1,6 @@
 # Rowing-Data-Analysis
 
-iRow shiny webapp in R for quick analysis of rowing times.
+iRow shiny webapp (iRowApp.R) for quick analysis of rowing times.
 
 Data import from published google drive .csv or local import into R.
 
