@@ -1,0 +1,134 @@
+---
+title: "Row Team Times"
+output:
+  html_notebook:
+    code_folding: hide
+    fig_height: 8
+    fig_width: 12
+  html_document: default
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(lubridate)
+
+```
+
+```{r}
+# Row_Times <- read.csv("C:/Users/fitzg/Desktop/Row Times.csv")
+# Row_Times <- read.csv("klong.csv")
+Row_Times <- read_csv("/mnt/StorageCell/Dropbox/Rowing Data Analysis/klong.csv", 
+                       col_types = cols(Avg.Split = col_time(format = "%M:%OS"),
+                                                  Date = col_date(format = "%m/%d/%Y"),
+                                                  Distance = col_number(), Goal.Split = col_time(format = "%M:%OS"),
+                                                  Last.Split = col_time(format = "%M:%OS"),
+                                                  SPM = col_integer(), Split = col_time(format = "%M:%OS"),
+                                                  Exercise = col_character()))
+```
+
+```{r, include=FALSE}
+testTime_long <- Row_Times %>%
+  # gather(Distance, Split, -c(Name, `Avg.Split`, `Last.Split`, `Goal.Split`, SPM, Date)) %>%
+  mutate(Name = factor(Name)) %>%
+  mutate(Exercise = factor(Exercise)) %>%
+  # mutate(Distance = factor(Distance, levels = c("X500", "X1000", "X1500", "X2000"), labels = c("500", "1000", "1500", "2000"))) %>%
+  mutate(Distance = as.numeric(as.character(Distance))) %>%
+  mutate(Split = parse_time(Split, "%H:%M:%OS")) %>%
+  mutate(`Last.Split` = parse_time(`Last.Split`, "%H:%M:%OS")) %>%
+  mutate(`Goal.Split` = parse_time(`Goal.Split`, "%H:%M:%OS")) %>%
+  mutate(`Avg.Split` = parse_time(`Avg.Split`, "%H:%M:%OS")) 
+  
+
+  
+# write.csv(testTime_long, file = "testTime_long.csv", row.names = F)
+
+```
+ Averages By Rower
+```{r Summarize each rower, echo=FALSE}
+rowerAverages <- testTime_long %>%
+  group_by(Name, Date, Exercise) %>%
+  select(-Distance) %>%
+  summarise_all(mean) %>%
+  group_by(Name, Date) %>%
+  mutate(Goal.Difference = Goal.Split - Split)
+
+rowerAverages
+```
+
+
+```{r Remove specific rower}
+testTime_long <- filter(testTime_long, Name != "Anika")
+```
+
+
+```{r Split by Person, echo=FALSE, message=TRUE, warning=FALSE}
+
+ggplot(data = testTime_long, aes(x= Distance, y= Split, group = Name)) +
+  facet_wrap(~Name, scales = "free") +
+  # ylim(110, 160) +
+  geom_line(size = 1.2) +
+  # Show Goal Split
+  geom_hline(data = rowerAverages, aes(yintercept = Goal.Split), na.rm = T, color = "Green", alpha = .8) +
+  #Show Last Split
+  geom_hline(data = rowerAverages, aes(yintercept = Last.Split), na.rm = T, color = "Red", alpha = .8) +
+  #Show Average (Mean) Split
+  geom_hline(data = rowerAverages, aes(yintercept = Avg.Split), na.rm = T, color = "Blue", alpha = .8) +
+  labs(title = "Rower Splits - Green line is Goal; Red is Last Test; Blue is Rower Average") +
+  theme_bw()
+```
+
+```{r Overall Average Split, echo=FALSE}
+ggplot(data = testTime_long, aes(x= Distance, y = Split)) +
+  #Show each rower as a point
+  # geom_point() +
+  # Show Overall Average Split by Distance
+  stat_summary(fun.data = mean_se, geom = "pointrange", na.rm = T, size = 1) +
+  stat_summary(fun.y = mean, geom = "line", na.rm = T, size = 1.5) +
+  # Show Additional Goals, Progress, and Global Average
+  stat_summary(aes(x= Distance, y = Goal.Split), fun.y = mean, geom = "line", na.rm = T, color = "Green") +
+  stat_summary(aes(x= Distance, y = Last.Split), fun.y = mean, geom = "line", na.rm = T, color = "Red", alpha =1) +
+  stat_summary(aes(x= Distance, y = Avg.Split), fun.y = mean, geom = "line", na.rm = T, color = "Blue", alpha =1) +
+  labs(title = "Group Average - Green line is Goal; Red is Last Test; Blue is Global Average") +
+  theme_bw()
+```
+
+```{r Split Distributions}
+avgGroupGoal <- mean(rowerAverages$Goal.Split, na.rm = T)
+avgGroupSplit <- mean(rowerAverages$Split, na.rm = T)
+avgGroupLast <- mean(rowerAverages$Last.Split, na.rm = T)
+
+ggplot(data = testTime_long, aes(x = Split, group = Date, color = Date)) +
+  geom_density() +
+  # geom_vline(xintercept = avgGroupSplit, color = "Blue") +
+  # geom_vline(xintercept = avgGroupGoal, color = "Green") +
+  # geom_vline(xintercept = avgGroupLast, color = "Red") +
+  labs(title = "Split time distribution by Date") +
+  theme_bw()
+  
+```
+
+```{r Goal - Split Difference, message=FALSE, warning=FALSE}
+rowerGoalDiff <- rowerAverages %>%
+  group_by(Name, Date) %>%
+  mutate(Goal.Difference = Goal.Split - Split)
+
+ggplot(data = rowerAverages, aes(x = Name, y = Goal.Difference, fill = Goal.Difference)) +
+  geom_bar(stat = "identity", position = position_dodge(width = .5)) +
+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) + 
+  labs(title = "Goal Split minus Average Split (Positive scores are Good!)", y = "Time Difference") +
+  theme_bw()
+```
+
+```{r Split Variance Analysis}
+rowerSplitVar <- testTime_long %>%
+  group_by(Name, Date, Test) %>%
+  select(c(Name, Date, Exercise, Split)) %>%
+  summarise_all(var) %>%
+  rename(`Split Variance` = Split)
+
+ggplot(data = rowerSplitVar, aes(x = Name, y = `Split Variance`, fill = `Split Variance`)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Variance of Rower's Splits within a Exercise/Date", y = "Split Variance (in seconds)") +
+  theme_bw()
+
+```
