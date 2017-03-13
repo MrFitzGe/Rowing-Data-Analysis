@@ -57,22 +57,23 @@ ui = fluidPage(
                             c(
                               "All", unique(as.character(rowerAverages$Name))
                             ), 
+                  multiple = TRUE, selectize = TRUE),
+      
+      selectInput("Date",
+                           "Date(s):",
+                           c(
+                             "All",
+                             unique(as.character(rowerAverages$Date))
+                           ),
                   multiple = TRUE),
-       selectInput("Date",
-                            "Date(s):",
-                            c(
-                              "All",
-                              unique(as.character(rowerAverages$Date))
-                            ),
-                   multiple = TRUE),
       
       selectInput("Exercise",
         "Exercise or Test:",
         c("All", unique(as.character(
           rowerAverages$Exercise
         )))
-      ))
-    ),
+      )),
+      width = 2),
     
     
     mainPanel(
@@ -111,11 +112,11 @@ server <- function(input, output) {
       }
       
       if (input$Date != "All") {
-        data <- filter(data, Date %in% input$Date)
+        data <- filter(data, as.character(Date) %in% input$Date)
       }
       
       if (input$Exercise != "All") {
-        data <- data[data$Exercise == input$Exercise,]
+        data <- filter(data, Exercise == input$Exercise)
       }
     
     RowerAveragesUserLimited <- data %>%
@@ -137,16 +138,17 @@ server <- function(input, output) {
     data <- ExerciseTime_long
     
     if (input$Name != "All") {
-      data <- data[data$Name %in% input$Name,]
+      data <- filter(data, Name %in% input$Name)
     }
     
     if (input$Date != "All") {
-      data <- data[data$Date %in% input$Date,]
+      data <- filter(data, as.character(Date) %in% input$Date)
     }
     
     if (input$Exercise != "All") {
-      data <- data[data$Exercise == input$Exercise,]
+      data <- filter(data, Exercise == input$Exercise)
     }
+    
      ggplot(data = data, aes(x = Distance, y = Split)) +
           #Show each rower as a point
           # geom_point() +
@@ -166,16 +168,17 @@ server <- function(input, output) {
         data <- ExerciseTime_long
         
         if (input$Name != "All") {
-          data <- data[data$Name %in% input$Name,]
+          data <- filter(data, Name %in% input$Name)
         }
         
         if (input$Date != "All") {
-          data <- data[data$Date %in% input$Date,]
+          data <- filter(data, as.character(Date) %in% input$Date)
         }
         
         if (input$Exercise != "All") {
-          data <- data[data$Exercise == input$Exercise,]
+          data <- filter(data, Exercise == input$Exercise)
         }
+        
         RowerAveragesUserLimited <- data %>%
           group_by(Name, Date, Exercise) %>%
           select(-Distance) %>%
@@ -201,15 +204,15 @@ server <- function(input, output) {
         data <- ExerciseTime_long
         
         if (input$Name != "All") {
-          data <- data[data$Name %in% input$Name,]
+          data <- filter(data, Name %in% input$Name)
         }
         
         if (input$Date != "All") {
-          data <- data[data$Date %in% input$Date,]
+          data <- filter(data, as.character(Date) %in% input$Date)
         }
         
         if (input$Exercise != "All") {
-          data <- data[data$Exercise == input$Exercise,]
+          data <- filter(data, Exercise == input$Exercise)
         }
         
       ggplot(data, aes(x = Split, group = Date, color = Date)) +
